@@ -17,7 +17,32 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        EnsureShellIntegration();
         Loaded += async (_, _) => await RefreshAsync();
+    }
+
+    /// <summary>
+    /// Claims .wbt files and tramplist:// links on every start.
+    ///
+    /// Normally seizing a file type without asking is hostile, but nothing else on a
+    /// Windows machine opens a .wbt — the extension belongs to this game — so there is no
+    /// association to trample, and double-clicking a download is the whole point of the
+    /// app. Re-registered each run so a Windows update or a reinstall elsewhere cannot
+    /// quietly break the handler.
+    ///
+    /// Failure is ignored: the registry write is per-user and should not fail, but if it
+    /// does the app still works through its own install button.
+    /// </summary>
+    private static void EnsureShellIntegration()
+    {
+        try
+        {
+            ShellIntegration.Register();
+        }
+        catch
+        {
+            // Not worth interrupting startup over.
+        }
     }
 
     // ---- Installing -------------------------------------------------------
@@ -328,28 +353,6 @@ public partial class MainWindow : Window
 
     private void OnOpenSite(object sender, RoutedEventArgs e) => OpenUrl(TrampListClient.SiteUrl);
 
-    private void OnToggleAssociation(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            if (ShellIntegration.IsFileTypeRegistered())
-            {
-                ShellIntegration.Unregister();
-                Status("Done — .wbt files no longer open with TrampList Manager.");
-            }
-            else
-            {
-                ShellIntegration.Register();
-                Status("Done — double-click a downloaded .wbt to install it.");
-            }
-            UpdateAssociationButton();
-        }
-        catch (Exception ex)
-        {
-            Status($"Could not change the association: {ex.Message}", isError: true);
-        }
-    }
-
     // ---- View state -------------------------------------------------------
 
     /// <summary>
@@ -360,8 +363,6 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task RefreshAsync()
     {
-        UpdateAssociationButton();
-
         if (!_folder.Exists)
         {
             WalkerList.ItemsSource = null;
@@ -418,26 +419,6 @@ public partial class MainWindow : Window
 
         WalkerList.SelectedItem = match;
         WalkerList.ScrollIntoView(match);
-    }
-
-    /// <summary>
-    /// The button says what clicking it will do, not what the setting is called —
-    /// "file association" means nothing to someone who just wants double-click to work.
-    /// </summary>
-    private void UpdateAssociationButton()
-    {
-        var on = ShellIntegration.IsFileTypeRegistered();
-
-        AssocButton.Content = on
-            ? "Stop opening .wbt files"
-            : "Open .wbt files with this app";
-
-        AssocButton.ToolTip = on
-            ? "Double-clicking a .wbt file currently opens TrampList Manager.\n"
-              + "Click to undo that — files will open with whatever Windows picks instead."
-            : "Lets you install a design by double-clicking the .wbt you downloaded,\n"
-              + "instead of choosing it here. Only affects your Windows account, and\n"
-              + "you can turn it off again at any time.";
     }
 
     private void Status(string message, bool isError = false)

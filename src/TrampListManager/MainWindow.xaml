@@ -201,8 +201,6 @@
                             Style="{StaticResource GhostButton}" IsEnabled="False" Margin="6,0,0,0"/>
                     <Button x:Name="ShareButton" Content="SHARE" Click="OnShare"
                             Style="{StaticResource PrimaryButton}" IsEnabled="False" Margin="6,0,0,0"/>
-                    <Button x:Name="AssocButton" Click="OnToggleAssociation"
-                            Style="{StaticResource GhostButton}" Margin="6,0,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
