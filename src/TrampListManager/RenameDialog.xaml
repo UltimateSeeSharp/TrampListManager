@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Label this Trampler" Height="248" Width="440"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Icon="app.ico" ShowInTaskbar="False"
         Background="{StaticResource Background}"
         TextElement.Foreground="{StaticResource Foreground}"
         FontFamily="Segoe UI">

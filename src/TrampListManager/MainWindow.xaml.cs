@@ -260,12 +260,12 @@ public partial class MainWindow : Window
             if (ShellIntegration.IsFileTypeRegistered())
             {
                 ShellIntegration.Unregister();
-                Status("Removed the .wbt file association.");
+                Status("Done — .wbt files no longer open with TrampList Manager.");
             }
             else
             {
                 ShellIntegration.Register();
-                Status("Registered .wbt files and tramplist:// links with this app.");
+                Status("Done — double-click a downloaded .wbt to install it.");
             }
             UpdateAssociationButton();
         }
@@ -345,10 +345,25 @@ public partial class MainWindow : Window
         WalkerList.ScrollIntoView(match);
     }
 
-    private void UpdateAssociationButton() =>
-        AssocButton.Content = ShellIntegration.IsFileTypeRegistered()
-            ? "Association: on"
-            : "File association";
+    /// <summary>
+    /// The button says what clicking it will do, not what the setting is called —
+    /// "file association" means nothing to someone who just wants double-click to work.
+    /// </summary>
+    private void UpdateAssociationButton()
+    {
+        var on = ShellIntegration.IsFileTypeRegistered();
+
+        AssocButton.Content = on
+            ? "Stop opening .wbt files"
+            : "Open .wbt files with this app";
+
+        AssocButton.ToolTip = on
+            ? "Double-clicking a .wbt file currently opens TrampList Manager.\n"
+              + "Click to undo that — files will open with whatever Windows picks instead."
+            : "Lets you install a design by double-clicking the .wbt you downloaded,\n"
+              + "instead of choosing it here. Only affects your Windows account, and\n"
+              + "you can turn it off again at any time.";
+    }
 
     private void Status(string message, bool isError = false)
     {

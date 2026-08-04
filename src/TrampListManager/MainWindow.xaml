@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="TrampList Manager" Height="640" Width="880"
         MinHeight="500" MinWidth="700"
+        Icon="app.ico"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Background}"
         TextElement.Foreground="{StaticResource Foreground}"

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -6,6 +6,21 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+
+    <!-- The .exe icon, used by Explorer, the taskbar and Alt+Tab. Also the icon the
+         shell shows for .wbt files once the association is registered, since
+         ShellIntegration points DefaultIcon at this executable. -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
+
+    <AssemblyTitle>TrampList Manager</AssemblyTitle>
+    <Product>TrampList Manager</Product>
+    <Description>Install and share Trampler designs for SAND: Raiders of Sophie.</Description>
+    <Version>1.0.0</Version>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Also embedded as a resource so the window can show it in its title bar. -->
+    <Resource Include="app.ico" />
+  </ItemGroup>
 
 </Project>
