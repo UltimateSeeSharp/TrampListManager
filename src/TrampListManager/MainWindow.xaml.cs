@@ -70,7 +70,7 @@ public partial class MainWindow : Window
         // mistake in the folder holding every design the player has built.
         OfferBackupOnce();
 
-        var result = _folder.Install(path);
+        var result = _folder.Install(path, AskAboutDuplicate);
 
         if (cleanUpSource)
         {
@@ -88,6 +88,36 @@ public partial class MainWindow : Window
 
         var name = label ?? Path.GetFileNameWithoutExtension(path);
         Status($"Installed {name} as {result.Id.ToString()[..8]}… — restart SAND to see it.");
+    }
+
+    /// <summary>
+    /// Asked when the design is already installed. Both answers are legitimate — replacing
+    /// is what you want after an author updates a design, adding a copy is what you want to
+    /// keep an original and tinker with a variant — so the app does not guess.
+    /// </summary>
+    private DuplicateChoice AskAboutDuplicate(Guid id)
+    {
+        var existing = _labels.Get(id)?.Name ?? $"{id.ToString()[..8]}…";
+
+        var answer = MessageBox.Show(
+            $"""
+            You already have this design installed ({existing}).
+
+            Replace it with the downloaded copy?
+
+            Yes — replace it.
+            No — keep both, installing this as a separate design.
+            """,
+            "Already installed",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        return answer switch
+        {
+            MessageBoxResult.Yes => DuplicateChoice.Replace,
+            MessageBoxResult.No => DuplicateChoice.AddCopy,
+            _ => DuplicateChoice.Cancel
+        };
     }
 
     private void OfferBackupOnce()
@@ -229,7 +259,7 @@ public partial class MainWindow : Window
 
     private void OnBackup(object sender, RoutedEventArgs e)
     {
-        if (!_folder.Exists) { Status("No Walkers folder found.", isError: true); return; }
+        if (!_folder.Exists) { Status("Nothing to back up yet — you have no saved designs."); return; }
 
         try
         {
@@ -245,7 +275,18 @@ public partial class MainWindow : Window
 
     private void OnOpenFolder(object sender, RoutedEventArgs e)
     {
-        if (!_folder.Exists) { Status("No Walkers folder found.", isError: true); return; }
+        // Create on demand: a player who has never saved a design has no folder yet, and
+        // refusing to open it is less useful than making it.
+        try
+        {
+            System.IO.Directory.CreateDirectory(_folder.Path_);
+        }
+        catch (Exception ex)
+        {
+            Status($"Could not open the Walkers folder: {ex.Message}", isError: true);
+            return;
+        }
+
         Process.Start("explorer.exe", $"\"{_folder.Path_}\"");
     }
 

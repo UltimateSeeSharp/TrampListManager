@@ -7,9 +7,9 @@ namespace TrampListManager.Services;
 /// Reads and writes SAND's Trampler folder.
 ///
 /// The game stores each design as a gzip-compressed <c>.wbt</c> file named after a UUID.
-/// The UUID exists only as the filename — it appears nowhere inside the file — so a
-/// design can be installed under any fresh UUID and collisions are impossible. That is
-/// what makes file-copy sharing work at all.
+/// The UUID exists only as the filename — it appears nowhere inside the file — which is
+/// what makes file-copy sharing work at all, and lets a design keep one identity
+/// everywhere: TrampList serves downloads under the design's own UUID.
 /// </summary>
 public sealed class WalkerFolder
 {
@@ -53,13 +53,18 @@ public sealed class WalkerFolder
     }
 
     /// <summary>
-    /// Installs a downloaded blueprint under a freshly generated UUID.
+    /// Installs a downloaded blueprint into the Walkers folder.
     ///
-    /// A new UUID is always generated rather than reusing the downloaded filename: two
-    /// people installing the same shared design would otherwise collide, and installing
-    /// a design twice is a legitimate thing to want (keep an original, tinker with a copy).
+    /// Downloads from TrampList arrive named after the design's own UUID, which is both
+    /// what the game expects and a global identity — the same design is the same file for
+    /// everyone. That name is kept when the source has one, so re-downloading an updated
+    /// design replaces the old copy instead of leaving two.
+    ///
+    /// <paramref name="onDuplicate"/> decides what happens when that file already exists.
+    /// Returning null cancels; the caller asks the user rather than guessing, since both
+    /// replacing and keeping a second copy are things people legitimately want.
     /// </summary>
-    public InstallResult Install(string sourceFile)
+    public InstallResult Install(string sourceFile, Func<Guid, DuplicateChoice>? onDuplicate = null)
     {
         if (!File.Exists(sourceFile))
             return InstallResult.Fail("That file no longer exists.");
@@ -76,11 +81,31 @@ public sealed class WalkerFolder
         try
         {
             Directory.CreateDirectory(Path_);
-            var id = Guid.NewGuid();
+
+            // Keep the source's UUID when it has one; otherwise mint a fresh one.
+            var stem = System.IO.Path.GetFileNameWithoutExtension(sourceFile);
+            var id = Guid.TryParse(stem, out var parsed) ? parsed : Guid.NewGuid();
             var destination = System.IO.Path.Combine(Path_, $"{id}.wbt");
 
-            // overwrite: false — a UUID collision would mean overwriting someone's design.
-            File.Copy(sourceFile, destination, overwrite: false);
+            if (File.Exists(destination))
+            {
+                switch (onDuplicate?.Invoke(id) ?? DuplicateChoice.Cancel)
+                {
+                    case DuplicateChoice.Cancel:
+                        return InstallResult.Fail("Already installed.");
+
+                    case DuplicateChoice.AddCopy:
+                        // A second copy needs its own identity, since the filename is it.
+                        id = Guid.NewGuid();
+                        destination = System.IO.Path.Combine(Path_, $"{id}.wbt");
+                        break;
+
+                    case DuplicateChoice.Replace:
+                        break;
+                }
+            }
+
+            File.Copy(sourceFile, destination, overwrite: true);
 
             return InstallResult.Ok(id, destination);
         }
@@ -169,6 +194,16 @@ public sealed record WalkerFile(string Path, Guid Id, long Size, DateTime Modifi
         using var stream = File.OpenRead(Path);
         return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
     }
+}
+
+/// <summary>What to do when a design is already installed.</summary>
+public enum DuplicateChoice
+{
+    Cancel,
+    /// <summary>Overwrite the existing file, keeping one copy of the design.</summary>
+    Replace,
+    /// <summary>Install alongside it under a fresh UUID.</summary>
+    AddCopy
 }
 
 public sealed record InstallResult(bool Success, Guid Id, string? Destination, string? Error)
