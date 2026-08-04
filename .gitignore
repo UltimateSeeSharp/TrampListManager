@@ -6,3 +6,7 @@ obj/
 *.user
 *.suo
 publish/
+
+# Built .exe staged for a GitHub release. The binary belongs on the release, not
+# in the history — it is 62 MB and rebuilt from a tag whenever it is needed.
+release/
