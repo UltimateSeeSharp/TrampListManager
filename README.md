@@ -65,6 +65,11 @@ dotnet publish src/TrampListManager -c Release -r win-x64 --self-contained \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
+Produces a single ~62 MB `TrampListManager.exe` under
+`src/TrampListManager/bin/Release/net10.0-windows/win-x64/publish/`, with no .NET runtime
+needed on the target machine. Compression is set in the csproj — without it the same build
+is 134 MB.
+
 ## Notes
 
 Not affiliated with Hologryph or tinyBuild.
