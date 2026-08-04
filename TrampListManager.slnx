@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TrampListManager/TrampListManager.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Verify/Verify.csproj" />
+  </Folder>
+</Solution>
