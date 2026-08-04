@@ -84,14 +84,34 @@
                               MouseDoubleClick="OnShare">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="ID" Width="110"
-                                                DisplayMemberBinding="{Binding ShortId}"/>
-                                <GridViewColumn Header="Size" Width="90"
+                                <!-- Name and chassis carry the row; the raw ID is demoted
+                                     to a tooltip since it identifies nothing to a human. -->
+                                <GridViewColumn Header="Design" Width="230">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding ShortId}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                                <GridViewColumn Header="Chassis / crew" Width="290">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Detail}"
+                                                       Foreground="{StaticResource Muted}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                                <GridViewColumn Header="Source" Width="95"
+                                                DisplayMemberBinding="{Binding Source}"/>
+                                <GridViewColumn Header="Size" Width="80"
                                                 DisplayMemberBinding="{Binding SizeText}"/>
-                                <GridViewColumn Header="Last saved" Width="130"
+                                <GridViewColumn Header="Last saved" Width="115"
                                                 DisplayMemberBinding="{Binding ModifiedText}"/>
-                                <GridViewColumn Header="Filename" Width="340"
-                                                DisplayMemberBinding="{Binding FileName}"/>
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -111,8 +131,12 @@
                            Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"
                            Margin="0,0,320,0"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="OpenPageButton" Content="View on TrampList" Click="OnOpenDesignPage"
+                            Style="{StaticResource GhostButton}" IsEnabled="False"/>
+                    <Button x:Name="RenameButton" Content="Rename" Click="OnRename"
+                            Style="{StaticResource GhostButton}" IsEnabled="False" Margin="6,0,0,0"/>
                     <Button x:Name="ShareButton" Content="Share this design…" Click="OnShare"
-                            Style="{StaticResource PrimaryButton}" IsEnabled="False"/>
+                            Style="{StaticResource PrimaryButton}" IsEnabled="False" Margin="6,0,0,0"/>
                     <Button x:Name="AssocButton" Content="File association" Click="OnToggleAssociation"
                             Style="{StaticResource GhostButton}" Margin="6,0,0,0"/>
                 </StackPanel>

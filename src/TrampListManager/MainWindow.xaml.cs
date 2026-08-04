@@ -11,12 +11,13 @@ public partial class MainWindow : Window
 {
     private readonly WalkerFolder _folder = new();
     private readonly TrampListClient _client = new();
+    private readonly LabelStore _labels = new();
     private bool _backupOffered;
 
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += (_, _) => Refresh();
+        Loaded += async (_, _) => await RefreshAsync();
     }
 
     // ---- Installing -------------------------------------------------------
@@ -179,20 +180,51 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnShare(object sender, RoutedEventArgs e)
     {
-        if (WalkerList.SelectedItem is not WalkerFile walker) return;
+        if (WalkerList.SelectedItem is not WalkerRow row) return;
+
+        // Already published: no reason to upload it again.
+        if (row.Design is not null)
+        {
+            OpenUrl(row.Design.Url);
+            Status($"\"{row.Design.Name}\" is already on TrampList.");
+            return;
+        }
 
         OpenUrl(TrampListClient.UploadUrl);
-        Process.Start("explorer.exe", $"/select,\"{walker.Path}\"");
-        Status($"Opened the upload page — drag {walker.ShortId}… into the form.");
+        Process.Start("explorer.exe", $"/select,\"{row.File.Path}\"");
+        Status($"Opened the upload page — drag {row.Title} into the form.");
+    }
+
+    private void OnOpenDesignPage(object sender, RoutedEventArgs e)
+    {
+        if (WalkerList.SelectedItem is WalkerRow { Design: not null } row)
+            OpenUrl(row.Design.Url);
+    }
+
+    /// <summary>Labels a design locally. Only meaningful for ones not on TrampList.</summary>
+    private void OnRename(object sender, RoutedEventArgs e)
+    {
+        if (WalkerList.SelectedItem is not WalkerRow row) return;
+
+        var dialog = new RenameDialog(row.Label?.Name, row.Label?.Notes) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+
+        _labels.Set(row.File.Id, dialog.DesignName, dialog.Notes);
+        Refresh();
     }
 
     private void OnSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        var walker = WalkerList.SelectedItem as WalkerFile;
-        ShareButton.IsEnabled = walker is not null;
+        var row = WalkerList.SelectedItem as WalkerRow;
 
-        if (walker is not null)
-            Status($"{walker.FileName}  ·  {walker.SizeText}  ·  saved {walker.ModifiedText}");
+        ShareButton.IsEnabled = row is not null;
+        OpenPageButton.IsEnabled = row?.Design is not null;
+        // A published design takes its name from the site, so a local label would be ignored.
+        RenameButton.IsEnabled = row is not null && row.Design is null;
+        ShareButton.Content = row?.Design is not null ? "View on TrampList" : "Share this design…";
+
+        if (row is not null)
+            Status($"{row.File.FileName}  ·  {row.SizeText}  ·  saved {row.ModifiedText}");
     }
 
     private void OnBackup(object sender, RoutedEventArgs e)
@@ -245,7 +277,13 @@ public partial class MainWindow : Window
 
     // ---- View state -------------------------------------------------------
 
-    private void Refresh()
+    /// <summary>
+    /// Rebuilds the list, then asks TrampList to identify the files by hash.
+    ///
+    /// The rows render immediately from local data and are upgraded in place once the
+    /// lookup returns, so a slow or unreachable site costs the user nothing.
+    /// </summary>
+    private async Task RefreshAsync()
     {
         UpdateAssociationButton();
 
@@ -259,18 +297,48 @@ public partial class MainWindow : Window
         }
 
         var walkers = _folder.List();
-        WalkerList.ItemsSource = walkers;
-        CountLabel.Text = $"YOUR TRAMPLERS  ({walkers.Count})";
+        _labels.Prune(walkers.Select(w => w.Id));
 
+        var rows = walkers
+            .Select(w => new WalkerRow(w, null, _labels.Get(w.Id)))
+            .ToList();
+
+        WalkerList.ItemsSource = rows;
+        CountLabel.Text = $"YOUR TRAMPLERS  ({rows.Count})";
         EmptyLabel.Text = "No Tramplers here yet.\nBuild one in SAND, or install a design above.";
-        EmptyLabel.Visibility = walkers.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        EmptyLabel.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        if (rows.Count == 0) return;
+
+        // Hashing reads every file, so keep it off the UI thread.
+        Status("Identifying designs…");
+        var hashes = await Task.Run(() =>
+            rows.ToDictionary(r => r.File.Path, r => r.File.ComputeSha256()));
+
+        var resolved = await _client.ResolveAsync(hashes.Values);
+
+        var merged = rows
+            .Select(r => resolved.TryGetValue(hashes[r.File.Path], out var info)
+                ? r with { Design = info }
+                : r)
+            .ToList();
+
+        WalkerList.ItemsSource = merged;
+
+        var known = merged.Count(r => r.IsPublished);
+        Status(known > 0
+            ? $"{known} of {merged.Count} recognised from TrampList."
+            : "None of these are on TrampList yet — click Rename to label them.");
     }
+
+    /// <summary>Synchronous entry point for callers that cannot await.</summary>
+    private async void Refresh() => await RefreshAsync();
 
     private void SelectById(Guid id)
     {
-        if (WalkerList.ItemsSource is not IEnumerable<WalkerFile> items) return;
+        if (WalkerList.ItemsSource is not IEnumerable<WalkerRow> items) return;
 
-        var match = items.FirstOrDefault(w => w.Id == id);
+        var match = items.FirstOrDefault(w => w.File.Id == id);
         if (match is null) return;
 
         WalkerList.SelectedItem = match;

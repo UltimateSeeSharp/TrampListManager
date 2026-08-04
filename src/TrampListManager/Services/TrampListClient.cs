@@ -1,5 +1,8 @@
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace TrampListManager.Services;
 
@@ -89,7 +92,63 @@ public sealed class TrampListClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Asks TrampList which of these blueprint hashes are published designs.
+    ///
+    /// Hash rather than filename, because the filename UUID is regenerated on install
+    /// and carries no information — the bytes are the only stable identity a local file
+    /// has. Returns an empty map on any failure: labels are a convenience, and the app
+    /// must stay usable offline.
+    /// </summary>
+    public async Task<Dictionary<string, DesignInfo>> ResolveAsync(
+        IEnumerable<string> hashes, CancellationToken ct = default)
+    {
+        var list = hashes.Distinct().Take(200).ToList();
+        if (list.Count == 0) return new();
+
+        try
+        {
+            var body = new StringContent(
+                JsonSerializer.Serialize(new { hashes = list }),
+                System.Text.Encoding.UTF8, "application/json");
+
+            using var res = await Http.PostAsync($"{SiteUrl}/api/designs/by-hash", body, ct);
+            if (!res.IsSuccessStatusCode) return new();
+
+            var payload = await res.Content.ReadFromJsonAsync<HashLookupResponse>(cancellationToken: ct);
+            if (payload?.Matches is null) return new();
+
+            return payload.Matches.ToDictionary(
+                kv => kv.Key,
+                kv => new DesignInfo(
+                    kv.Value.Slug, kv.Value.Name, kv.Value.ChassisName, kv.Value.ChassisTier,
+                    kv.Value.CrewSize, kv.Value.Role, kv.Value.DownloadCount, kv.Value.GameVersion));
+        }
+        catch
+        {
+            return new();
+        }
+    }
+
     public void Dispose() { }
+
+    private sealed class HashLookupResponse
+    {
+        [JsonPropertyName("matches")]
+        public Dictionary<string, MatchDto>? Matches { get; set; }
+    }
+
+    private sealed class MatchDto
+    {
+        [JsonPropertyName("slug")] public string Slug { get; set; } = "";
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("chassisName")] public string ChassisName { get; set; } = "";
+        [JsonPropertyName("chassisTier")] public string ChassisTier { get; set; } = "";
+        [JsonPropertyName("crewSize")] public int? CrewSize { get; set; }
+        [JsonPropertyName("role")] public string? Role { get; set; }
+        [JsonPropertyName("downloadCount")] public int DownloadCount { get; set; }
+        [JsonPropertyName("gameVersion")] public string GameVersion { get; set; } = "";
+    }
 }
 
 public sealed record DownloadResult(bool Success, string? Path, string? Error)
