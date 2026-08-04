@@ -1,3 +1,6 @@
+using System.Windows;
+using System.Windows.Media;
+
 namespace TrampListManager.Services;
 
 /// <summary>
@@ -26,6 +29,13 @@ public sealed record WalkerRow(WalkerFile File, DesignInfo? Design, LocalLabel? 
     public string Source => Design is not null ? "TrampList" : (Label is not null ? "Labelled" : "Local");
 
     public bool IsPublished => Design is not null;
+
+    /// <summary>
+    /// Rust for designs the site knows, muted for the rest — so a glance down the column
+    /// separates published designs from local ones without reading the words.
+    /// </summary>
+    public Brush SourceBrush =>
+        (Brush)Application.Current.FindResource(Design is not null ? "Primary" : "Muted");
 
     public string SizeText => File.SizeText;
     public string ModifiedText => File.ModifiedText;

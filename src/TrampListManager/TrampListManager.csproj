@@ -21,6 +21,13 @@
   <ItemGroup>
     <!-- Also embedded as a resource so the window can show it in its title bar. -->
     <Resource Include="app.ico" />
+
+    <!-- Oswald and Inter, matching the site. These must be <Resource> rather than
+         Content: a pack:// FontFamily URI resolves against embedded resources, and a
+         missing one fails silently by falling back to Arial. tests/Verify checks that
+         the families actually resolve, because nothing else would notice. -->
+    <Resource Include="Fonts\Oswald.ttf" />
+    <Resource Include="Fonts\Inter.ttf" />
   </ItemGroup>
 
 </Project>

@@ -1,13 +1,15 @@
 <Window x:Class="TrampListManager.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="TrampList Manager" Height="640" Width="880"
-        MinHeight="500" MinWidth="700"
+        xmlns:local="clr-namespace:TrampListManager"
+        Title="TrampList Manager" Height="660" Width="900"
+        MinHeight="520" MinWidth="760"
         Icon="app.ico"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource Background}"
         TextElement.Foreground="{StaticResource Foreground}"
-        FontFamily="Segoe UI"
+        FontFamily="{StaticResource BodyFont}"
+        UseLayoutRounding="True"
         AllowDrop="True" Drop="OnDrop" DragOver="OnDragOver">
 
     <Grid>
@@ -18,25 +20,47 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- Header: the site's wordmark, with the crest glyph beside it -->
         <Border Grid.Row="0" Background="{StaticResource Card}" Padding="20,15"
                 BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
             <Grid>
-                <StackPanel>
-                    <TextBlock Text="TRAMPLIST MANAGER" FontFamily="Consolas" FontSize="16"
-                               FontWeight="Bold" Foreground="{StaticResource Primary}"/>
-                    <TextBlock Text="Install and share Trampler designs"
-                               Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,0"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- The crest from the favicon, drawn rather than bitmapped so it
+                         stays crisp at any DPI. Same geometry as static/icon.svg. -->
+                    <Viewbox Width="26" Height="26" Margin="0,0,11,0">
+                        <Canvas Width="64" Height="64">
+                            <Path Fill="{StaticResource Primary}"
+                                  Data="M6,3 H58 V40.6 L32,61 L6,40.6 Z"/>
+                            <Path Stroke="{StaticResource PrimaryFg}" StrokeThickness="5"
+                                  StrokeStartLineCap="Square" StrokeEndLineCap="Square"
+                                  Data="M39,12 L27,25 M27,25 L33,37 M23,41 L41,41"/>
+                        </Canvas>
+                    </Viewbox>
+
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock FontFamily="{StaticResource DisplayFont}" FontSize="18"
+                                   FontWeight="Bold">
+                            <Run Text="TRAMP" Foreground="{StaticResource Foreground}"/><Run
+                                 Text="LIST" Foreground="{StaticResource Primary}"/><Run
+                                 Text=" MANAGER" Foreground="{StaticResource Foreground}"/>
+                        </TextBlock>
+                        <TextBlock Text="Install and share Trampler designs"
+                                   Foreground="{StaticResource Muted}" FontSize="11.5"
+                                   Margin="0,2,0,0"/>
+                    </StackPanel>
                 </StackPanel>
+
                 <Button Content="Open TrampList" Click="OnOpenSite" HorizontalAlignment="Right"
                         VerticalAlignment="Center" Style="{StaticResource GhostButton}"/>
             </Grid>
         </Border>
 
+        <!-- Install -->
         <Border Grid.Row="1" Background="{StaticResource CardSoft}" Padding="20,14"
                 BorderBrush="{StaticResource Border}" BorderThickness="0,0,0,1">
             <StackPanel>
-                <TextBlock Text="INSTALL A DESIGN" FontFamily="Consolas" FontSize="10"
-                           Foreground="{StaticResource Muted}" Margin="0,0,0,8"/>
+                <TextBlock Text="INSTALL A DESIGN" Style="{StaticResource SectionLabel}"
+                           Margin="0,0,0,9"/>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -49,7 +73,7 @@
                              KeyDown="OnSlugKeyDown"
                              Tag="Paste a design ID or link  —  e.g. test-8bed65"/>
 
-                    <Button x:Name="InstallButton" Grid.Column="1" Content="Install"
+                    <Button x:Name="InstallButton" Grid.Column="1" Content="INSTALL"
                             Click="OnInstallSlug"
                             Style="{StaticResource PrimaryButton}" Margin="8,0,0,0"/>
 
@@ -57,10 +81,11 @@
                             Style="{StaticResource GhostButton}" Margin="6,0,0,0"/>
                 </Grid>
                 <TextBlock Text="…or drop a .wbt file anywhere on this window."
-                           Foreground="{StaticResource Muted}" FontSize="11" Margin="0,8,0,0"/>
+                           Foreground="{StaticResource Muted}" FontSize="11.5" Margin="0,9,0,0"/>
             </StackPanel>
         </Border>
 
+        <!-- Tramplers -->
         <Grid Grid.Row="2" Margin="20,16,20,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -68,8 +93,8 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Margin="0,0,0,10">
-                <TextBlock x:Name="CountLabel" Text="YOUR TRAMPLERS" FontFamily="Consolas"
-                           FontSize="10" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                <TextBlock x:Name="CountLabel" Text="YOUR TRAMPLERS"
+                           Style="{StaticResource SectionLabel}" VerticalAlignment="Center"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Back up folder" Click="OnBackup" Style="{StaticResource GhostButton}"/>
                     <Button Content="Open folder" Click="OnOpenFolder" Style="{StaticResource GhostButton}" Margin="6,0,0,0"/>
@@ -80,24 +105,29 @@
             <Border Grid.Row="1" Background="{StaticResource Card}"
                     BorderBrush="{StaticResource Border}" BorderThickness="1">
                 <Grid>
+                    <!--
+                        SizeChanged drives the column widths in code-behind. A GridView
+                        cannot express "fill the remaining space", so fixed widths always
+                        either overflow into a horizontal scrollbar or leave a gap; the
+                        handler recomputes them against the actual viewport instead.
+                    -->
                     <ListView x:Name="WalkerList" Style="{StaticResource ListStyle}"
                               SelectionChanged="OnSelectionChanged"
-                              MouseDoubleClick="OnShare">
+                              SizeChanged="OnListSizeChanged"
+                              MouseDoubleClick="OnRowActivated">
                         <ListView.View>
-                            <GridView>
-                                <!-- Name and chassis carry the row; the raw ID is demoted
-                                     to a tooltip since it identifies nothing to a human. -->
-                                <GridViewColumn Header="Design" Width="230">
+                            <GridView AllowsColumnReorder="False">
+                                <GridViewColumn x:Name="ColDesign" Header="Design">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"
-                                                       ToolTip="{Binding ShortId}"/>
+                                                       ToolTip="{Binding File.FileName}"/>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
 
-                                <GridViewColumn Header="Chassis / crew" Width="290">
+                                <GridViewColumn x:Name="ColDetail" Header="Chassis / crew">
                                     <GridViewColumn.CellTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Detail}"
@@ -107,12 +137,38 @@
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>
 
-                                <GridViewColumn Header="Source" Width="95"
-                                                DisplayMemberBinding="{Binding Source}"/>
-                                <GridViewColumn Header="Size" Width="80"
-                                                DisplayMemberBinding="{Binding SizeText}"/>
-                                <GridViewColumn Header="Last saved" Width="115"
-                                                DisplayMemberBinding="{Binding ModifiedText}"/>
+                                <GridViewColumn x:Name="ColSource" Header="Source">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Source}"
+                                                       FontFamily="{StaticResource DisplayFont}"
+                                                       FontSize="11"
+                                                       Foreground="{Binding SourceBrush}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                                <GridViewColumn x:Name="ColSize" Header="Size">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SizeText}"
+                                                       FontFamily="{StaticResource MonoFont}"
+                                                       FontSize="11.5"
+                                                       Foreground="{StaticResource Muted}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+
+                                <GridViewColumn x:Name="ColDate" Header="Last saved">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding ModifiedText}"
+                                                       FontFamily="{StaticResource MonoFont}"
+                                                       FontSize="11.5"
+                                                       Foreground="{StaticResource Muted}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                             </GridView>
                         </ListView.View>
                     </ListView>
@@ -124,21 +180,28 @@
             </Border>
         </Grid>
 
+        <!-- Footer -->
         <Border Grid.Row="3" Padding="20,12" Margin="0,16,0,0"
                 Background="{StaticResource Card}"
                 BorderBrush="{StaticResource Border}" BorderThickness="0,1,0,0">
             <Grid>
-                <TextBlock x:Name="StatusLabel" VerticalAlignment="Center" FontSize="12"
-                           Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"
-                           Margin="0,0,320,0"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="StatusLabel" Grid.Column="0" VerticalAlignment="Center"
+                           FontSize="12" Foreground="{StaticResource Muted}"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button x:Name="OpenPageButton" Content="View on TrampList" Click="OnOpenDesignPage"
                             Style="{StaticResource GhostButton}" IsEnabled="False"/>
                     <Button x:Name="RenameButton" Content="Rename" Click="OnRename"
                             Style="{StaticResource GhostButton}" IsEnabled="False" Margin="6,0,0,0"/>
-                    <Button x:Name="ShareButton" Content="Share this design…" Click="OnShare"
+                    <Button x:Name="ShareButton" Content="SHARE" Click="OnShare"
                             Style="{StaticResource PrimaryButton}" IsEnabled="False" Margin="6,0,0,0"/>
-                    <Button x:Name="AssocButton" Content="File association" Click="OnToggleAssociation"
+                    <Button x:Name="AssocButton" Click="OnToggleAssociation"
                             Style="{StaticResource GhostButton}" Margin="6,0,0,0"/>
                 </StackPanel>
             </Grid>

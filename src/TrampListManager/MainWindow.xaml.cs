@@ -251,6 +251,40 @@ public partial class MainWindow : Window
 
     private void OnRefresh(object sender, RoutedEventArgs e) => Refresh();
 
+    /// <summary>
+    /// Fits the columns to the viewport.
+    ///
+    /// GridView has no "fill remaining space" width, so fixed widths either overflow —
+    /// producing a horizontal scrollbar over content that would otherwise fit — or leave
+    /// dead space on the right. The fixed columns keep their natural size and the two
+    /// text columns share what is left.
+    /// </summary>
+    private void OnListSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!e.WidthChanged) return;
+
+        const double Source = 90, Size = 80, Date = 110;
+        // Border, padding, and the vertical scrollbar once the list is long enough.
+        var chrome = 4 + (WalkerList.Items.Count > 12 ? 18 : 0);
+
+        var free = WalkerList.ActualWidth - (Source + Size + Date) - chrome;
+        if (free < 200) return; // Too narrow to be worth reflowing.
+
+        ColDesign.Width = Math.Round(free * 0.42);
+        ColDetail.Width = Math.Round(free * 0.58);
+        ColSource.Width = Source;
+        ColSize.Width = Size;
+        ColDate.Width = Date;
+    }
+
+    /// <summary>Double-click opens the design page when there is one, else offers a label.</summary>
+    private void OnRowActivated(object sender, MouseButtonEventArgs e)
+    {
+        if (WalkerList.SelectedItem is not WalkerRow row) return;
+        if (row.Design is not null) OpenUrl(row.Design.Url);
+        else OnRename(sender, e);
+    }
+
     private void OnOpenSite(object sender, RoutedEventArgs e) => OpenUrl(TrampListClient.SiteUrl);
 
     private void OnToggleAssociation(object sender, RoutedEventArgs e)

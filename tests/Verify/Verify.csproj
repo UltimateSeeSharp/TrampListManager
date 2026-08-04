@@ -10,6 +10,8 @@
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- WPF resource loading requires a single-threaded apartment. -->
+    <ApplicationDefaultThreadingModel>STA</ApplicationDefaultThreadingModel>
   </PropertyGroup>
 
 </Project>
