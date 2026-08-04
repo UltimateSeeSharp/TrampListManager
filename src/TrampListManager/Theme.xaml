@@ -46,21 +46,37 @@
                  makes them as tall as whatever sits beside them. Size to content. -->
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
-            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Height" Value="34"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid>
-                            <!-- Cut corner, top-right, mirroring the site's plate. -->
-                            <Path x:Name="Plate" Fill="{TemplateBinding Background}" Stretch="Fill"
-                                  Data="M0,0 L94,0 L100,6 L100,100 L0,100 Z"/>
-                            <ContentPresenter Margin="{TemplateBinding Padding}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              TextElement.FontFamily="{TemplateBinding FontFamily}"
-                                              TextElement.FontSize="{TemplateBinding FontSize}"
-                                              TextElement.FontWeight="{TemplateBinding FontWeight}"
-                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
-                        </Grid>
+                        <!--
+                            The content sizes the button and the plate follows it. A
+                            Stretch="Fill" Path has no natural size, so if it shares a
+                            Grid cell with the content it claims all available space and
+                            drags the button's height with it — which is what made these
+                            buttons as tall as their row. Border gives the cell a real
+                            measured size; the Path only paints inside it.
+                        -->
+                        <Border Background="Transparent">
+                            <Grid>
+                                <!-- Cut corner, top-right, mirroring the site's plate. -->
+                                <!-- MinWidth/MinHeight of 0, not Width/Height: an explicit
+                                     size overrides the stretch and the plate never paints.
+                                     Measuring at zero lets the content decide the button's
+                                     size, then the Path fills the cell during arrange. -->
+                                <Path x:Name="Plate" Fill="{TemplateBinding Background}"
+                                      Stretch="Fill" MinWidth="0" MinHeight="0"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                      Data="M0,0 L94,0 L100,6 L100,100 L0,100 Z"/>
+                                <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  TextElement.FontFamily="{TemplateBinding FontFamily}"
+                                                  TextElement.FontSize="{TemplateBinding FontSize}"
+                                                  TextElement.FontWeight="{TemplateBinding FontWeight}"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}"/>
+                            </Grid>
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Plate" Property="Opacity" Value="0.86"/>
@@ -86,7 +102,7 @@
             <!-- See PrimaryButton: size to content, not to the row. -->
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
-            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Height" Value="34"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
