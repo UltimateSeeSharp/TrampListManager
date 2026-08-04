@@ -230,10 +230,13 @@ public partial class MainWindow : Window
             .Any(f => f.EndsWith(".wbt", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
-    /// Opens the upload page and reveals the file, so the user can drag it into the form.
-    /// The app deliberately holds no account and uploads nothing itself.
+    /// Sends the blueprint to TrampList and opens the upload page with it already attached.
+    ///
+    /// The app still holds no account: it parks the file and gets a short-lived token, and
+    /// the browser — where the user is signed in with Steam — does the publishing. All the
+    /// user adds is screenshots and the description.
     /// </summary>
-    private void OnShare(object sender, RoutedEventArgs e)
+    private async void OnShare(object sender, RoutedEventArgs e)
     {
         if (WalkerList.SelectedItem is not WalkerRow row) return;
 
@@ -245,9 +248,42 @@ public partial class MainWindow : Window
             return;
         }
 
-        OpenUrl(TrampListClient.UploadUrl);
-        Process.Start("explorer.exe", $"/select,\"{row.File.Path}\"");
-        Status($"Opened the upload page — drag {row.Title} into the form.");
+        ShareButton.IsEnabled = false;
+        Status($"Uploading {row.Title} to TrampList…");
+
+        try
+        {
+            var result = await _client.StageAsync(row.File.Path);
+
+            if (result.ExistingSlug is { } slug)
+            {
+                // Published by someone else, or by this user before the list was refreshed.
+                OpenUrl(TrampListClient.DesignUrl(slug));
+                Status("That design is already on TrampList — opened its page.");
+                Refresh();
+                return;
+            }
+
+            if (!result.Success)
+            {
+                // Falls back to the manual route, which still works. Said plainly rather
+                // than quietly: the browser is about to open an empty form, and without
+                // being told why, that looks like the upload simply did nothing.
+                Status($"{result.Error} Opening the form for you to attach it by hand.", isError: true);
+                OpenUrl(TrampListClient.UploadUrl);
+                Process.Start("explorer.exe", $"/select,\"{row.File.Path}\"");
+                return;
+            }
+
+            OpenUrl(result.UploadUrl!);
+            Status($"Uploaded {row.Title} — add screenshots and details in your browser.");
+        }
+        finally
+        {
+            // Selection may have changed while the upload ran, so re-derive rather than
+            // unconditionally re-enabling.
+            ShareButton.IsEnabled = WalkerList.SelectedItem is WalkerRow;
+        }
     }
 
     private void OnOpenDesignPage(object sender, RoutedEventArgs e)
@@ -276,7 +312,7 @@ public partial class MainWindow : Window
         OpenPageButton.IsEnabled = row?.Design is not null;
         // A published design takes its name from the site, so a local label would be ignored.
         RenameButton.IsEnabled = row is not null && row.Design is null;
-        ShareButton.Content = row?.Design is not null ? "View on TrampList" : "Share this design…";
+        ShareButton.Content = row?.Design is not null ? "View on TrampList" : "Upload to TrampList…";
 
         if (row is not null)
             Status($"{row.File.FileName}  ·  {row.SizeText}  ·  saved {row.ModifiedText}");
